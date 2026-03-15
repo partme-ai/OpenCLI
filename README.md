@@ -9,7 +9,7 @@
 [![Node.js Version](https://img.shields.io/node/v/@jackwener/opencli?style=flat-square)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@jackwener/opencli?style=flat-square)](./LICENSE)
 
-A CLI tool that turns **any website** into a command-line interface. **47 commands** across **17 sites** — bilibili, zhihu, xiaohongshu, twitter, reddit, xueqiu, github, v2ex, hackernews, bbc, weibo, boss, yahoo-finance, reuters, smzdm, ctrip, youtube — powered by browser session reuse and AI-native discovery.
+A CLI tool that turns **any website** into a command-line interface. **56 commands** across **17 sites** — bilibili, zhihu, xiaohongshu, twitter, reddit, xueqiu, github, v2ex, hackernews, bbc, weibo, boss, yahoo-finance, reuters, smzdm, ctrip, youtube — powered by browser session reuse and AI-native discovery.
 
 ---
 
@@ -126,7 +126,7 @@ npm install -g @jackwener/opencli@latest
 | **zhihu** | `hot` `search` `question` | 🔐 Browser |
 | **xiaohongshu** | `search` `notifications` `feed` `me` `user` | 🔐 Browser |
 | **xueqiu** | `feed` `hot-stock` `hot` `search` `stock` `watchlist` | 🔐 Browser |
-| **twitter** | `trending` `bookmarks` `profile` `search` `timeline` | 🔐 Browser |
+| **twitter** | `trending` `bookmarks` `profile` `search` `timeline` `following` `followers` `notifications` `post` `reply` `delete` | 🔐 Browser |
 | **reddit** | `hot` `frontpage` `search` `subreddit` | 🔐 Browser |
 | **weibo** | `hot` | 🔐 Browser |
 | **boss** | `search` | 🔐 Browser |

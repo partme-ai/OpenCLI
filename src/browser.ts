@@ -4,6 +4,7 @@
  */
 
 import { spawn, execSync, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import * as fs from 'node:fs';
@@ -33,7 +34,7 @@ function isPortReachable(port: number, host = '127.0.0.1', timeoutMs = 800): Pro
   });
 }
 
-async function discoverChromeEndpoint(): Promise<string | null> {
+export async function discoverChromeEndpoint(): Promise<string | null> {
   const candidates: string[] = [];
 
   // User-specified Chrome data dir takes highest priority
@@ -83,6 +84,106 @@ const EXTENSION_LOCK_TIMEOUT = parseInt(process.env.OPENCLI_EXTENSION_LOCK_TIMEO
 const EXTENSION_LOCK_POLL = parseInt(process.env.OPENCLI_EXTENSION_LOCK_POLL_INTERVAL ?? '1', 10);
 const CONNECT_TIMEOUT = parseInt(process.env.OPENCLI_BROWSER_CONNECT_TIMEOUT ?? '30', 10);
 const LOCK_DIR = path.join(os.tmpdir(), 'opencli-mcp-lock');
+
+type ConnectFailureKind = 'missing-token' | 'extension-timeout' | 'extension-not-installed' | 'cdp-timeout' | 'mcp-init' | 'process-exit' | 'unknown';
+
+type ConnectFailureInput = {
+  kind: ConnectFailureKind;
+  mode: 'extension' | 'cdp';
+  timeout: number;
+  hasExtensionToken: boolean;
+  tokenFingerprint?: string | null;
+  stderr?: string;
+  exitCode?: number | null;
+  rawMessage?: string;
+};
+
+export function getTokenFingerprint(token: string | undefined): string | null {
+  if (!token) return null;
+  return createHash('sha256').update(token).digest('hex').slice(0, 8);
+}
+
+export function formatBrowserConnectError(input: ConnectFailureInput): Error {
+  const stderr = input.stderr?.trim();
+  const suffix = stderr ? `\n\nMCP stderr:\n${stderr}` : '';
+  const tokenHint = input.tokenFingerprint ? ` Token fingerprint: ${input.tokenFingerprint}.` : '';
+
+  if (input.mode === 'extension') {
+    if (input.kind === 'missing-token') {
+      return new Error(
+        'Failed to connect to Playwright MCP Bridge: PLAYWRIGHT_MCP_EXTENSION_TOKEN is not set.\n\n' +
+        'Without this token, Chrome will show a manual approval dialog for every new MCP connection. ' +
+        'Copy the token from the Playwright MCP Bridge extension and set it in BOTH your shell environment and MCP client config.' +
+        suffix,
+      );
+    }
+
+    if (input.kind === 'extension-not-installed') {
+      return new Error(
+        'Failed to connect to Playwright MCP Bridge: the browser extension did not attach.\n\n' +
+        'Make sure Chrome is running and the "Playwright MCP Bridge" extension is installed and enabled. ' +
+        'If Chrome shows an approval dialog, click Allow.' +
+        suffix,
+      );
+    }
+
+    if (input.kind === 'extension-timeout') {
+      const likelyCause = input.hasExtensionToken
+        ? `The most likely cause is that PLAYWRIGHT_MCP_EXTENSION_TOKEN does not match the token currently shown by the browser extension.${tokenHint} Re-copy the token from the extension and update BOTH your shell environment and MCP client config.`
+        : 'PLAYWRIGHT_MCP_EXTENSION_TOKEN is not configured, so the extension may be waiting for manual approval.';
+      return new Error(
+        `Timed out connecting to Playwright MCP Bridge (${input.timeout}s).\n\n` +
+        `${likelyCause} If a browser prompt is visible, click Allow. You can also switch to Chrome remote debugging mode with OPENCLI_USE_CDP=1 as a fallback.` +
+        suffix,
+      );
+    }
+  }
+
+  if (input.mode === 'cdp' && input.kind === 'cdp-timeout') {
+    return new Error(
+      `Timed out connecting to browser via CDP (${input.timeout}s).\n\n` +
+      'Make sure Chrome is running and remote debugging is enabled at chrome://inspect#remote-debugging, or set OPENCLI_CDP_ENDPOINT explicitly.' +
+      suffix,
+    );
+  }
+
+  if (input.kind === 'mcp-init') {
+    return new Error(`Failed to initialize Playwright MCP: ${input.rawMessage ?? 'unknown error'}${suffix}`);
+  }
+
+  if (input.kind === 'process-exit') {
+    return new Error(
+      `Playwright MCP process exited before the browser connection was established${input.exitCode == null ? '' : ` (code ${input.exitCode})`}.` +
+      suffix,
+    );
+  }
+
+  return new Error(input.rawMessage ?? 'Failed to connect to browser');
+}
+
+function inferConnectFailureKind(args: {
+  mode: 'extension' | 'cdp';
+  hasExtensionToken: boolean;
+  stderr: string;
+  rawMessage?: string;
+  exited?: boolean;
+}): ConnectFailureKind {
+  const haystack = `${args.rawMessage ?? ''}\n${args.stderr}`.toLowerCase();
+
+  if (args.mode === 'extension' && !args.hasExtensionToken)
+    return 'missing-token';
+  if (haystack.includes('extension connection timeout') || haystack.includes('playwright mcp bridge'))
+    return 'extension-not-installed';
+  if (args.rawMessage?.startsWith('MCP init failed:'))
+    return 'mcp-init';
+  if (args.exited)
+    return 'process-exit';
+  if (args.mode === 'extension')
+    return 'extension-timeout';
+  if (args.mode === 'cdp')
+    return 'cdp-timeout';
+  return 'unknown';
+}
 
 // JSON-RPC helpers
 let _nextId = 1;
@@ -350,10 +451,42 @@ export class PlaywrightMCP {
     return new Promise<Page>((resolve, reject) => {
       const isDebug = process.env.DEBUG?.includes('opencli:mcp');
       const debugLog = (msg: string) => isDebug && console.error(`[opencli:mcp] ${msg}`);
+      const mode: 'extension' | 'cdp' = cdpEndpoint ? 'cdp' : 'extension';
+      const extensionToken = process.env.PLAYWRIGHT_MCP_EXTENSION_TOKEN;
+      const tokenFingerprint = getTokenFingerprint(extensionToken);
+      let stderrBuffer = '';
+      let settled = false;
+
+      const settleError = (kind: ConnectFailureKind, extra: { rawMessage?: string; exitCode?: number | null } = {}) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(formatBrowserConnectError({
+          kind,
+          mode,
+          timeout,
+          hasExtensionToken: !!extensionToken,
+          tokenFingerprint,
+          stderr: stderrBuffer,
+          exitCode: extra.exitCode,
+          rawMessage: extra.rawMessage,
+        }));
+      };
+
+      const settleSuccess = (pageToResolve: Page) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(pageToResolve);
+      };
 
       const timer = setTimeout(() => {
         debugLog('Connection timed out');
-        reject(new Error(`Timed out connecting to browser (${timeout}s)`));
+        settleError(inferConnectFailureKind({
+          mode,
+          hasExtensionToken: !!extensionToken,
+          stderr: stderrBuffer,
+        }));
       }, timeout * 1000);
 
       const mcpArgs: string[] = [mcpPath];
@@ -364,6 +497,9 @@ export class PlaywrightMCP {
       }
       if (process.env.OPENCLI_VERBOSE) {
         console.error(`[opencli] CDP mode: ${cdpEndpoint ? `auto-discovered ${cdpEndpoint}` : 'fallback to --extension'}`);
+        if (mode === 'extension') {
+          console.error(`[opencli] Extension token: ${extensionToken ? `configured (fingerprint ${tokenFingerprint})` : 'missing'}`);
+        }
       }
       if (process.env.OPENCLI_BROWSER_EXECUTABLE_PATH) {
         mcpArgs.push('--executablePath', process.env.OPENCLI_BROWSER_EXECUTABLE_PATH);
@@ -402,14 +538,25 @@ export class PlaywrightMCP {
         }
       });
 
-      this._proc.stderr?.on('data', (chunk) => debugLog(`STDERR: ${chunk}`));
+      this._proc.stderr?.on('data', (chunk: Buffer) => {
+        const text = chunk.toString();
+        stderrBuffer += text;
+        debugLog(`STDERR: ${text}`);
+      });
       this._proc.on('error', (err) => {
         debugLog(`Subprocess error: ${err.message}`);
-        clearTimeout(timer);
-        reject(err);
+        settleError('process-exit', { rawMessage: err.message });
       });
       this._proc.on('close', (code) => {
         debugLog(`Subprocess closed with code ${code}`);
+        if (!settled) {
+          settleError(inferConnectFailureKind({
+            mode,
+            hasExtensionToken: !!extensionToken,
+            stderr: stderrBuffer,
+            exited: true,
+          }), { exitCode: code });
+        }
       });
 
       // Initialize: send initialize request
@@ -426,7 +573,15 @@ export class PlaywrightMCP {
       debugLog('Waiting for initialize response...');
       origRecv().then((resp) => {
         debugLog('Got initialize response');
-        if (resp.error) { clearTimeout(timer); reject(new Error(`MCP init failed: ${resp.error.message}`)); return; }
+        if (resp.error) {
+          settleError(inferConnectFailureKind({
+            mode,
+            hasExtensionToken: !!extensionToken,
+            stderr: stderrBuffer,
+            rawMessage: `MCP init failed: ${resp.error.message}`,
+          }), { rawMessage: resp.error.message });
+          return;
+        }
         
         const initializedMsg = JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n';
         debugLog(`SEND: ${initializedMsg.trim()}`);
@@ -441,17 +596,14 @@ export class PlaywrightMCP {
           } else if (Array.isArray(tabs)) {
             this._initialTabCount = tabs.length;
           }
-          clearTimeout(timer);
-          resolve(page);
+          settleSuccess(page);
         }).catch((err) => {
           debugLog(`Tabs fetch error: ${err.message}`);
-          clearTimeout(timer);
-          resolve(page);
+          settleSuccess(page);
         });
       }).catch((err) => {
         debugLog(`Init promise rejected: ${err.message}`);
-        clearTimeout(timer);
-        reject(err);
+        settleError('mcp-init', { rawMessage: err.message });
       });
     });
   }
