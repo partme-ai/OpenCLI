@@ -144,7 +144,7 @@ npm install -g @jackwener/opencli@latest
 
 ## 内置命令
 
-**29 个站点 · 151 命令** — 运行 `opencli list` 查看完整注册表。
+**30 个站点 · 156 命令** — 运行 `opencli list` 查看完整注册表。
 
 | 站点 | 命令 | 数量 | 模式 |
 |------|------|:----:|------|
@@ -160,6 +160,7 @@ npm install -g @jackwener/opencli@latest
 | **xueqiu** | `feed` `hot-stock` `hot` `search` `stock` `watchlist` | 6 | 🔐 浏览器 |
 | **antigravity** | `status` `send` `read` `new` `evaluate` | 5 | 🖥️ 桌面端 |
 | **chatgpt** | `status` `new` `send` `read` `ask` | 5 | 🖥️ 桌面端 |
+| **wechat** | `status` `send` `new` `search` `read` | 5 | 🖥️ 桌面端 |
 | **xiaohongshu** | `search` `notifications` `feed` `me` `user` | 5 | 🔐 浏览器 |
 | **xiaoyuzhou** | `podcast` `podcast-episodes` `episode` | 3 | 🌐 公开 |
 | **youtube** | `search` `video` `transcript` | 3 | 🔐 浏览器 |
