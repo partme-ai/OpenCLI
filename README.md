@@ -1,6 +1,6 @@
 # OpenCLI
 
-> **Make any website your CLI.**  
+> **Make any website or Electron App your CLI.**  
 > Zero risk · Reuse Chrome login · AI-powered discovery · 80+ commands · 19 sites
 
 [中文文档](./README.zh-CN.md)
@@ -9,7 +9,10 @@
 [![Node.js Version](https://img.shields.io/node/v/@jackwener/opencli?style=flat-square)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@jackwener/opencli?style=flat-square)](./LICENSE)
 
-A CLI tool that turns **any website** into a command-line interface — Bilibili, Zhihu, 小红书, Twitter/X, Reddit, YouTube, and [many more](#built-in-commands) — powered by browser session reuse and AI-native discovery.
+A CLI tool that turns **any website** or **Electron app** into a command-line interface — Bilibili, Zhihu, 小红书, Twitter/X, Reddit, YouTube, Antigravity, and [many more](#built-in-commands) — powered by browser session reuse and AI-native discovery.
+
+🔥 **CLI All Electron Apps! The Most Powerful Update Has Arrived!** 🔥
+Turn ANY Electron application into a CLI tool! Recombine, script, and extend applications like Antigravity Ultra seamlessly. Now AI can control itself natively. Unlimited possibilities await!
 
 ---
 
@@ -31,6 +34,7 @@ A CLI tool that turns **any website** into a command-line interface — Bilibili
 
 ## Highlights
 
+- **CLI All Electron** — CLI-ify apps like Antigravity Ultra! Now AI can control itself natively using cc/openclaw!
 - **Account-safe** — Reuses Chrome's logged-in state; your credentials never leave the browser.
 - **AI Agent ready** — `explore` discovers APIs, `synthesize` generates adapters, `cascade` finds auth strategies.
 - **Self-healing setup** — `opencli setup` auto-discovers tokens; `opencli doctor` diagnoses config across 10+ tools; `--fix` repairs them all.

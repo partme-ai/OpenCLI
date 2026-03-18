@@ -1,6 +1,6 @@
 # OpenCLI
 
-> **把任何网站变成你的命令行工具。**  
+> **把任何网站或 Electron 应用变成你的命令行工具。**  
 > 零风控 · 复用 Chrome 登录 · AI 自动发现接口 · 80+ 命令 · 19 站点
 
 [English](./README.md)
@@ -9,7 +9,12 @@
 [![Node.js Version](https://img.shields.io/node/v/@jackwener/opencli?style=flat-square)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@jackwener/opencli?style=flat-square)](./LICENSE)
 
-OpenCLI 将任何网站变成命令行工具 — B站、知乎、小红书、Twitter/X、Reddit、YouTube 等 [19 个站点](#内置命令) — 复用浏览器登录态，AI 驱动探索。
+OpenCLI 将任何网站或 Electron 应用（如 Antigravity）变成命令行工具 — B站、知乎、小红书、Twitter/X、Reddit、YouTube 等 [19 个站点](#内置命令) — 复用浏览器登录态，AI 驱动探索。
+
+🔥 **opencli 支持 CLI 化所有 electron 应用！最强大更新来袭！** 🔥
+CLI all electron！现在支持把所有 electron 应用 CLI 化，从而组合出各种神奇的能力。
+如果你在使用诸如 Antigravity Ultra 等工具时觉得不够灵活或难以扩展，现在通过 OpenCLI 把他 CLI 化，轻松打破界限。
+现在，**AI 可以自己控制自己**！结合 cc/openclaw 就可以远程控制任何 electron 应用！无限玩法！！
 
 ---
 
@@ -30,6 +35,7 @@ OpenCLI 将任何网站变成命令行工具 — B站、知乎、小红书、Twi
 
 ## 亮点
 
+- **CLI All Electron** — 支持把所有 electron 应用（如 Antigravity Ultra）CLI 化，让 AI 控制自己！
 - **多站点覆盖** — B站、知乎、小红书、Twitter、Reddit 等 19 个站点，80+ 命令
 - **零风控** — 复用 Chrome 登录态，无需存储任何凭证
 - **自修复配置** — `opencli setup` 自动发现 Token；`opencli doctor` 诊断 10+ 工具配置；`--fix` 一键修复

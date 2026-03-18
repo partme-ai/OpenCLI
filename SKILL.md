@@ -1,6 +1,6 @@
 ---
 name: opencli
-description: "OpenCLI — Make any website your CLI. Zero risk, AI-powered, reuse Chrome login. 80+ commands across 19 sites."
+description: "OpenCLI — Make any website or Electron App your CLI. Zero risk, AI-powered, reuse Chrome login. 80+ commands across 19 sites."
 version: 0.7.3
 author: jackwener
 tags: [cli, browser, web, mcp, playwright, bilibili, zhihu, twitter, github, v2ex, hackernews, reddit, xiaohongshu, xueqiu, youtube, boss, coupang, AI, agent]
@@ -8,7 +8,7 @@ tags: [cli, browser, web, mcp, playwright, bilibili, zhihu, twitter, github, v2e
 
 # OpenCLI
 
-> Make any website your CLI. Reuse Chrome login, zero risk, AI-powered discovery.
+> Make any website or Electron App your CLI. Reuse Chrome login, zero risk, AI-powered discovery.
 
 > [!CAUTION]
 > **AI Agent 必读：创建或修改任何适配器之前，你必须先阅读 [CLI-EXPLORER.md](./CLI-EXPLORER.md)！**
@@ -151,6 +151,15 @@ opencli smzdm search --keyword "耳机"    # 搜索好价
 
 # 携程 (browser)
 opencli ctrip search --query "三亚"      # 搜索目的地
+
+# Antigravity (Electron/CDP)
+opencli antigravity status              # 检查 CDP 连接
+opencli antigravity send "hello"        # 发送文本到当前 agent 聊天框
+opencli antigravity read                # 读取整个聊天记录面板
+opencli antigravity new                 # 清空聊天、开启新对话
+opencli antigravity extract-code        # 自动抽取 AI 回复中的代码块
+opencli antigravity model claude        # 切换底层模型
+opencli antigravity watch               # 流式监听增量消息
 ```
 
 ### Management Commands
