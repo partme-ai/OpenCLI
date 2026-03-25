@@ -193,6 +193,18 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepalive') connect();
 });
 
+// ─── Popup status API ───────────────────────────────────────────────
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === 'getStatus') {
+    sendResponse({
+      connected: ws?.readyState === WebSocket.OPEN,
+      reconnecting: reconnectTimer !== null,
+    });
+  }
+  return false;
+});
+
 // ─── Command dispatcher ─────────────────────────────────────────────
 
 async function handleCommand(cmd: Command): Promise<Result> {
