@@ -32,8 +32,8 @@
   },
   "files": [
     "dist/src/",
-    "dist/clis/",
-    "dist/cli-manifest.json",
+    "clis/",
+    "cli-manifest.json",
     "scripts/",
     "README.md",
     "LICENSE"
@@ -41,7 +41,7 @@
   "scripts": {
     "dev": "tsx src/main.ts",
     "dev:bun": "bun src/main.ts",
-    "build": "npm run clean-dist && tsc && npm run clean-yaml && npm run copy-yaml && npm run build-manifest",
+    "build": "npm run clean-dist && tsc && npm run copy-yaml && npm run build-manifest",
     "build-manifest": "node dist/src/build-manifest.js",
     "clean-dist": "node scripts/clean-dist.cjs",
     "clean-yaml": "node scripts/clean-yaml.cjs",

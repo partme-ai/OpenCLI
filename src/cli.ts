@@ -599,7 +599,7 @@ export function createProgram(BUILTIN_CLIS: string, USER_CLIS: string): Command 
         const fs = await import('node:fs');
         const path = await import('node:path');
         const dir = path.join(os.homedir(), '.opencli', 'clis', site);
-        const filePath = path.join(dir, `${command}.ts`);
+        const filePath = path.join(dir, `${command}.js`);
 
         if (fs.existsSync(filePath)) {
           console.log(`Adapter already exists: ${filePath}`);
@@ -663,7 +663,7 @@ cli({
 
         const { execFileSync } = await import('node:child_process');
         const os = await import('node:os');
-        const filePath = path.join(os.homedir(), '.opencli', 'clis', site, `${command}.ts`);
+        const filePath = path.join(os.homedir(), '.opencli', 'clis', site, `${command}.js`);
         if (!fs.existsSync(filePath)) {
           console.error(`Adapter not found: ${filePath}`);
           console.error(`Run "opencli browser init ${name}" to create it.`);
@@ -1003,6 +1003,7 @@ cli({
     .description('Start Anthropic-compatible API proxy for Antigravity')
     .option('--port <port>', 'Server port (default: 8082)', '8082')
     .action(async (opts) => {
+      // @ts-expect-error JS adapter — no type declarations
       const { startServe } = await import('../clis/antigravity/serve.js');
       await startServe({ port: parseInt(opts.port) });
     });

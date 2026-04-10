@@ -2,11 +2,11 @@
 /**
  * Build-time CLI manifest compiler.
  *
- * Scans all TS CLI definitions and pre-compiles them into a single
+ * Scans all JS CLI definitions in clis/ and pre-compiles them into a single
  * manifest.json for instant cold-start registration.
  *
  * Usage: npx tsx src/build-manifest.ts
- * Output: cli-manifest.json at the package root
+ * Output: cli-manifest.json next to clis/
  */
 
 import * as fs from 'node:fs';
@@ -18,11 +18,8 @@ import { findPackageRoot, getCliManifestPath } from './package-paths.js';
 
 const PACKAGE_ROOT = findPackageRoot(fileURLToPath(import.meta.url));
 const CLIS_DIR = path.join(PACKAGE_ROOT, 'clis');
-const DIST_CLIS_DIR = path.join(PACKAGE_ROOT, 'dist', 'clis');
-// Write manifest next to the directory the runtime actually scans (dist/clis/).
-// main.ts resolves BUILTIN_CLIS to dist/clis/ (relative to dist/src/main.js),
-// so the manifest must be at dist/cli-manifest.json for discoverClis() to find it.
-const OUTPUT = getCliManifestPath(DIST_CLIS_DIR);
+// Write manifest next to clis/ so both dev and installed runtime can find it.
+const OUTPUT = getCliManifestPath(CLIS_DIR);
 
 export interface ManifestEntry {
   site: string;
@@ -47,10 +44,10 @@ export interface ManifestEntry {
   timeout?: number;
   deprecated?: boolean | string;
   replacedBy?: string;
-  type: 'ts';
+  type: 'js';
   /** Relative path from clis/ dir, e.g. 'bilibili/search.js' */
   modulePath?: string;
-  /** Relative path to the original source file from clis/ dir (e.g. 'site/cmd.ts') */
+  /** Relative path to the source file from clis/ dir (e.g. 'site/cmd.js') */
   sourceFile?: string;
   /** Pre-navigation control — see CliCommand.navigateBefore */
   navigateBefore?: boolean | string;
@@ -73,7 +70,7 @@ function toManifestArgs(args: CliCommand['args']): ManifestEntry['args'] {
   }));
 }
 
-function toTsModulePath(filePath: string, site: string): string {
+function toModulePath(filePath: string, site: string): string {
   const baseName = path.basename(filePath, path.extname(filePath));
   return `${site}/${baseName}.js`;
 }
@@ -100,14 +97,14 @@ function toManifestEntry(cmd: CliCommand, modulePath: string, sourceFile?: strin
     timeout: cmd.timeoutSeconds,
     deprecated: cmd.deprecated,
     replacedBy: cmd.replacedBy,
-    type: 'ts',
+    type: 'js',
     modulePath,
     sourceFile,
     navigateBefore: cmd.navigateBefore,
   };
 }
 
-export async function loadTsManifestEntries(
+export async function loadManifestEntries(
   filePath: string,
   site: string,
   importer: (moduleHref: string) => Promise<unknown> = moduleHref => import(moduleHref),
@@ -118,7 +115,7 @@ export async function loadTsManifestEntries(
     // Helper/test modules should not appear as CLI commands in the manifest.
     if (!CLI_MODULE_PATTERN.test(src)) return [];
 
-    const modulePath = toTsModulePath(filePath, site);
+    const modulePath = toModulePath(filePath, site);
     const registry = getRegistry();
     const before = new Map(registry.entries());
     const mod = await importer(pathToFileURL(filePath).href);
@@ -136,13 +133,8 @@ export async function loadTsManifestEntries(
         })
         .map(([, cmd]) => cmd);
 
-    // Resolve sourceFile relative to clis/ (not dist/clis/).
-    // When scanning compiled JS from dist/clis/, map back to the original .ts path.
-    let sourceRelative = path.relative(CLIS_DIR, filePath);
-    if (filePath.startsWith(DIST_CLIS_DIR)) {
-      const distRelative = path.relative(DIST_CLIS_DIR, filePath);
-      sourceRelative = distRelative.replace(/\.js$/, '.ts');
-    }
+    // Resolve sourceFile relative to clis/.
+    const sourceRelative = path.relative(CLIS_DIR, filePath);
 
     const seen = new Set<string>();
     return runtimeCommands
@@ -164,24 +156,16 @@ export async function loadTsManifestEntries(
 export async function buildManifest(): Promise<ManifestEntry[]> {
   const manifest = new Map<string, ManifestEntry>();
 
-  // Scan compiled JS in dist/clis/ instead of raw TS in clis/.
-  // Node's type stripping does not rewrite '.js' → '.ts' in import
-  // specifiers, so dynamically importing .ts source files fails whenever
-  // they contain relative imports like './utils.js'.  Importing the
-  // tsc-compiled .js avoids this entirely.
-  const scanDir = fs.existsSync(DIST_CLIS_DIR) ? DIST_CLIS_DIR : CLIS_DIR;
-
-  if (fs.existsSync(scanDir)) {
-    for (const site of fs.readdirSync(scanDir)) {
-      const siteDir = path.join(scanDir, site);
+  // Scan JS adapters directly from clis/.
+  // Adapters are now JS-first — no compilation step needed.
+  if (fs.existsSync(CLIS_DIR)) {
+    for (const site of fs.readdirSync(CLIS_DIR)) {
+      const siteDir = path.join(CLIS_DIR, site);
       if (!fs.statSync(siteDir).isDirectory()) continue;
       for (const file of fs.readdirSync(siteDir)) {
-        if (
-          (file.endsWith('.js') && !file.endsWith('.d.js') && !file.endsWith('.test.js') && file !== 'index.js') ||
-          (scanDir === CLIS_DIR && file.endsWith('.ts') && !file.endsWith('.d.ts') && !file.endsWith('.test.ts') && file !== 'index.ts')
-        ) {
+        if (file.endsWith('.js') && !file.endsWith('.d.js') && !file.endsWith('.test.js') && file !== 'index.js') {
           const filePath = path.join(siteDir, file);
-          const entries = await loadTsManifestEntries(filePath, site);
+          const entries = await loadManifestEntries(filePath, site);
           for (const entry of entries) {
             const key = `${entry.site}/${entry.name}`;
             manifest.set(key, entry);
