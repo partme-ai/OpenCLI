@@ -166,6 +166,7 @@ export default defineConfig({
               text: 'Conventions',
               items: [
                 { text: 'Listing↔Detail ID Pairing', link: '/conventions/listing-detail-id-pairing' },
+                { text: 'Convention Audit', link: '/conventions/convention-audit' },
               ],
             },
           ],
@@ -174,6 +175,7 @@ export default defineConfig({
               text: 'Conventions',
               items: [
                 { text: 'Listing↔Detail ID Pairing', link: '/conventions/listing-detail-id-pairing' },
+                { text: 'Convention Audit', link: '/conventions/convention-audit' },
               ],
             },
           ],

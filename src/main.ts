@@ -125,13 +125,18 @@ installNodeNetwork();
 //    user-CLI discovery MUST run after built-in discovery to preserve the
 //    intended override order (user adapters override built-in ones).
 //  - discoverPlugins runs last: plugins may override both built-in and user CLIs.
-const [, ,] = await Promise.all([
-  ensureUserCliCompatShims(),
-  ensureUserAdapters(),
-  discoverClis(BUILTIN_CLIS),
-]);
-await discoverClis(USER_CLIS);
-await discoverPlugins();
+const skipUserDiscovery = argv[0] === 'convention-audit';
+if (skipUserDiscovery) {
+  await discoverClis(BUILTIN_CLIS);
+} else {
+  const [, ,] = await Promise.all([
+    ensureUserCliCompatShims(),
+    ensureUserAdapters(),
+    discoverClis(BUILTIN_CLIS),
+  ]);
+  await discoverClis(USER_CLIS);
+  await discoverPlugins();
+}
 
 // Register exit hook: notice appears after command output (same as npm/gh/yarn)
 registerUpdateNoticeOnExit();

@@ -582,6 +582,29 @@ export function createProgram(BUILTIN_CLIS: string, USER_CLIS: string): Command 
       process.exitCode = r.ok ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERIC_ERROR;
     });
 
+  program
+    .command('convention-audit')
+    .description('Scan adapters for agent-native convention violations')
+    .argument('[target]', 'site or site/name')
+    .option('--site <site>', 'Limit audit to one site')
+    .option('-f, --format <fmt>', 'Output format: table, json, yaml', 'table')
+    .option('--strict', 'Exit non-zero when violations are found', false)
+    .action(async (target, opts) => {
+      const { runConventionAudit, renderConventionAuditText } = await import('./convention-audit.js');
+      const report = runConventionAudit({
+        projectRoot: findPackageRoot(CLI_FILE),
+        target,
+        site: opts.site,
+      });
+      const fmt = String(opts.format ?? 'table').toLowerCase();
+      if (fmt === 'json' || fmt === 'yaml' || fmt === 'yml') {
+        renderOutput(report, { fmt });
+      } else {
+        console.log(renderConventionAuditText(report));
+      }
+      if (opts.strict && !report.ok) process.exitCode = EXIT_CODES.GENERIC_ERROR;
+    });
+
   // ── Built-in: browser (browser control for Claude Code skill) ───────────────
   //
   // Make websites accessible for AI agents.
