@@ -3,7 +3,23 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseJsonOutput, runCli } from './helpers.js';
+
+// Match the running CLI's package version so BrowserBridge does not classify
+// this fake daemon as stale (PR #1399 auto-restarts daemons whose
+// daemonVersion does not match PKG_VERSION; the fake daemon does not implement
+// /shutdown, so a mismatch makes every test exit with code 1).
+const PKG_VERSION: string = (() => {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  // tests/e2e -> repo root: ../..
+  const pkgPath = path.resolve(here, '..', '..', 'package.json');
+  try {
+    return JSON.parse(fs.readFileSync(pkgPath, 'utf-8')).version;
+  } catch {
+    return '0.0.0';
+  }
+})();
 
 type FakeTab = {
   page: string;
@@ -50,7 +66,7 @@ async function startFakeDaemon(): Promise<FakeDaemon> {
         ok: true,
         pid: process.pid,
         uptime: 1,
-        daemonVersion: 'test',
+        daemonVersion: PKG_VERSION,
         extensionConnected: true,
         extensionVersion: 'test',
         pending: 0,
