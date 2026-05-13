@@ -39,12 +39,12 @@ cli({
         catch {
             await page.wait(2);
         }
-        const results = await page.evaluate(`
+        const wrapper = await page.evaluate(`
       (function() {
         var results = [];
         var seenUrls = {};
         var rso = document.querySelector('#rso');
-        if (!rso) return results;
+        if (!rso) return {items: results};
 
         // -- Featured snippet (scoped to #rso to avoid matching unrelated elements) --
         var featuredEl = rso.querySelector('.xpdopen .hgKElc')
@@ -126,10 +126,11 @@ cli({
           }
         }
 
-        return results;
+        return {items: results};
       })()
     `);
-        if (!Array.isArray(results) || results.length === 0) {
+        const results = (wrapper && wrapper.items) || [];
+        if (results.length === 0) {
             throw new CliError('NOT_FOUND', 'No search results found', 'Try a different keyword or check for CAPTCHA');
         }
         return results;
